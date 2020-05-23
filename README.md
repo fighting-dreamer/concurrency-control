@@ -236,11 +236,13 @@ allows the transaction to be able to read other transaction's update, though it 
 
 The idea behind each level is not only to limit a set of anomolies, but also to have an comparitively stronger consistency guarantee too.
 
-Now that's set most Databases are ACID compliant. What is ACID (Atomicity, Consistency, Isolation, Durability)
-(Btw, **Consistency** here is different from what we read or it means in context of **CAP theorem** (Consistency, Availability, Partition Tolerance))
+Now that's set most Databases are ACID compliant. What is ACID (Atomicity, Consistency, Isolation, Durability) : These are properties of transaction that are intended to guarantee validity even in the event of errors, power failures, etc.
 
-ACID : 
-**A**tommicity : 
-**C**onsistency : 
-**I**solation : 
-**D**urability : 
+(Note : **Consistency** here is different from what we read or it means in context of **CAP theorem** (Consistency, Availability, Partition Tolerance))
+
+* **Atomicity** : Transactions are often composed of multiple statements. Atomicity guarantees that each transaction is treated as a single "unit", which either succeeds completely, or fails completely: if any of the statements constituting a transaction fails to complete, the entire transaction fails and the database is left unchanged.
+* **Consistency** : Consistency ensures that a transaction can only bring the database from one valid state to another, maintaining database invariants. This does not restrict or talk about concurrent executions.
+* **Isolation** : Transactions are often executed concurrently (e.g., multiple transactions reading and writing to a table at the same time). Isolation ensures that concurrent execution of transactions leaves the database in the same state that would have been obtained if the transactions were executed sequentially. This property motivate for concurrent executions.
+* **Durability** : Durability guarantees that once a transaction has been committed, it will remain committed even in the case of a system failure (e.g., power outage or crash). This usually means that completed transactions (or their effects) are recorded in non-volatile memory.
+
+
