@@ -55,7 +55,8 @@ Database is usually have many entities :
 
 Read operations are of various types, but essentially we are reading and not making any change. eg. : 
 1. you may be reading a table.
-2. you may be reading configs of of service.
+2. you may be reading many tables.
+3. you may be reading configs of database.
 
 Write Operations are of much more concern as every change effect the other user as this is change in a shared resource i.e. database. They are of many types :
 1. You may add new database.
@@ -67,12 +68,16 @@ Write Operations are of much more concern as every change effect the other user 
 7. you may delete table.
 8. you may update database name.
 9. you may delete a database.
+10. you may be updating config(s) of database.
+11. undo/redo changes.
+...
+...
 
 Among these writes, you see there are few cetegories emerging, those are : 
 1. Writes leading to change in database structure.
 2. Writes leading to change in values stored in the database.
 
-If we start considering the otehr aspects that Database provide like : Data security then few more other types of operations come to picture, that are related to Access Control.
+If we start considering the other aspects that Database provide like : Data security then few more other types of operations come to picture, that are related to Access Control.
 1. you may like to revoke/Grant access for a table.
 2. you may like to revoke/grant access for a database.
 
@@ -115,7 +120,7 @@ If we were to define an interface for transaction, it is only having 2 operation
 To ensure the Server Side understands we are trying to do a transaction, we have a **BEGIN** & **getStatus** method too as seen in JTA (javax.transaction.UserTransaction) 
 
 From above, If we were able to define a Transaction, but IF we were to enable users to do transaction, then in a multi user environment where user is accessing Database concurrently, Atomicity alone can't provide a consistent view of data.
-So IF we desire Consistency i.e. changing database state from one valid state to other while maintaining database invariants, what can be done to achive it.
+IF we desire Consistency i.e. changing database state from one valid state to other while maintaining database invariants, Lets see what can be done to achive it.
 - [ ] Can we let go of the Concurrent execution from users ?
 ```
 This will ensure that consistency is maintained as each operation is moves the data to consistent state and 2 executions are not interfering with each other at all.
@@ -123,7 +128,7 @@ This will ensure that consistency is maintained as each operation is moves the d
 - [ ] Should we use some kind of Locking to enable 
 concurrent execution ?
 ```
-This helps executions to make changes to 2 seperate areas but ensure no concurrent changes are happening to same data at same time, so Some Concurrency while maintaining consistency.
+This helps executions to make changes to 2 seperate areas but ensure no concurrent changes are happening to same data at same time, so we get some Concurrency while maintaining Consistency.
 ```
 - [ ] Should we provide each user its own copy of data to execute upon?
 ```
@@ -138,7 +143,7 @@ This is area of study on How to determine the order of operations, though a simp
 *
 - [ ] Any mixture of above solutions ?
 ```
-Most databases talk about mix of Isolation along with locking way to achieve concurrent exectuions. Isolation is more around having your own copy of data to work upon where based on kind of Isolation, you get different effect of READ and WRITE action.
+Most databases talk about mix of Isolation along with locking as a way to achieve concurrent exectuions. Isolation is more around having your own copy of data to work upon where based on kind of Isolation, you get different effect of READ and WRITE action.
 ```
 
 Lets talk about what kind of Concurreny Issues we are dealig with : 
@@ -155,7 +160,13 @@ It is a **Write-Read Conflict**.
 
 These concurrency issues are commonly called Anomolies.
 
-## Understanding these Anomolies better : 
+## Understanding these Anomolies better :
+C<i> -> Commit by **i**th user
+A<i> -> Rollback/Abort by **i**th user
+W<i>[<x>] : write of data **x** by **i**th user
+R<i>[<x>] : read of data **x** by **i**th user
+** X ~= pred : data based on predicate "pred"
+
 **Dirty Write** : 
 * W1[X], W2[X].. ((C1 OR A1) and (C2, A2) in any order)
 ```
@@ -180,8 +191,8 @@ C1/A1
 T1           T2
 R1[X]    
             W2[X]
-C1/R1   
-            C2/R2
+C1/A1   
+            C2/A2
 ```
 **Lost Update** : 
 * R1[X], W2[X], W1[X], C1, C2
@@ -200,8 +211,8 @@ C1
 T1              T2
 R1[X ~= pred]    
                 W2[Y ~= pred]
-C1/R1   
-                C2/R2
+C1/A1   
+                C2/A2
 ```
 
 ### Caveat : <ins>Phantom Reads V/S Non-Repeatable Reads</ins> : 
@@ -215,17 +226,17 @@ How can one solve given Anomoly with as limited requirements possible :
 * **Dirty Write** : we can solve this if each transaction is making changes to its own copy of data. If certain transaction commits then the value is updated while if it rollback/abort then the original value is retained.
 * **Dirty Read** : we can solve this if each transaction is making changes to its own copy and we limit the other transaction to not be able to read changes made under other transaction(s).
 * **Non-Repeatable Reads** : we can solve this if each transaction not only keep track of updated records/rows but also the data read as part of its own copy of data.
-* **Lost Update** : Aim of solution is to ensure other transaction can't over-write the vhanges done by given Transaction. Essentially if we provide each transaction its own copy of data, the end result will be either one of the update going through, while other's lost, The only way to ensure serial update for a certain data block is locking that. This results in a new strategy called **Cursor Stability**
+* **Lost Update** : Aim of solution is to ensure other transaction can't over-write the changes done by given Transaction. Essentially if we provide each transaction its own copy of data, the end result will be either one of the update going through, while other's lost, The only way to ensure serial update for a certain data block is locking that. This results in a new strategy called **Cursor Stability**
 * **Phantom Reads** : we can solve this if each transaction not only tracks the updated records but also the data read and keeps map of query used for given data read and provide same result as per that query.
 
 Copy of data for each transaction is acheived using multi-version databases that allow given data to have a seperate version for a given transaction.
 
 We see that, we are talking about putting some kind of limitations and in some way locking if required.
-these limitations are mostly trying to seperate the data being operated upon form the data in database.
+these limitations are mostly trying to seperate the data being operated upon from the original/current data in database.
 
 This  seperation is taken up as Isolations which help in achieving different levels/degree of Consistency.
 
-Most databases come with ANSI SQL Isolation Levels : 
+Most databases use ANSI SQL Isolation Levels : 
 1. **Read UnCommitted** : This isolation level
 allows the transaction to be able to read other transaction's update, though it can't make update on data changed by other transaction. i.e. Only READ of un-committed data is allowed.
 
@@ -234,7 +245,7 @@ allows the transaction to be able to read other transaction's update, though it 
 3. **Repeatable Reads** : It is one level higher than Read committed as it provide the isolation of Read-committed along with keeping hold on what ever data read whil processing and providing same read output for that data.
 4. **Serializable** : It is the highest level of Isolation, where you are only allowing a single transaction to operate on Database, keeping other transaction under pending state. Though all the above Isolation levels are defined keeping Anomolies in mind but this Isolation level is solely there to provide "fully serializable execution". 
 
-The idea behind each level is not only to limit a set of anomolies, but also to have an comparitively stronger consistency guarantee too.
+The idea behind each level is not only to limit a set of anomolies, but also to have an comparitively stronger degree of consistency guarantee too.
 
 Now that's set most Databases are ACID compliant. What is ACID (Atomicity, Consistency, Isolation, Durability) : These are properties of transaction that are intended to guarantee validity even in the event of errors, power failures, etc.
 
@@ -245,4 +256,4 @@ Now that's set most Databases are ACID compliant. What is ACID (Atomicity, Consi
 * **Isolation** : Transactions are often executed concurrently (e.g., multiple transactions reading and writing to a table at the same time). Isolation ensures that concurrent execution of transactions leaves the database in the same state that would have been obtained if the transactions were executed sequentially. This property motivate for concurrent executions.
 * **Durability** : Durability guarantees that once a transaction has been committed, it will remain committed even in the case of a system failure (e.g., power outage or crash). This usually means that completed transactions (or their effects) are recorded in non-volatile memory.
 
-
+In next articles, we will explore transaction process manager, undo/redo, maybe more of transaction data structure.
