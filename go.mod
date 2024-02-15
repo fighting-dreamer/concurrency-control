@@ -1,3 +1,3 @@
-module nipun.io/concurrency-control
+module github.com/fighting-dreamer/concurrency-control
 
-go 1.13
+go 1.21
